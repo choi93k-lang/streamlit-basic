@@ -19,21 +19,32 @@ st.title("💬 OpenAI 채팅 (대화 세션 목록 지원)")
 DB_FILE = "chat_history.db"
 
 def init_database():
-    """데이터베이스 파일 및 세션별 대화 저장 테이블 생성"""
+    """데이터베이스 파일 및 세션별 대화 저장 테이블 생성 및 자동 갱신"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+    
+    # 1. 기본 테이블 생성
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT,
-            session_title TEXT,
             role TEXT,
             content TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # 2. 기존 테이블 컬럼 목록 확인 후 누락된 컬럼 자동 추가
+    cursor.execute("PRAGMA table_info(messages)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    if "session_id" not in columns:
+        cursor.execute("ALTER TABLE messages ADD COLUMN session_id TEXT")
+    if "session_title" not in columns:
+        cursor.execute("ALTER TABLE messages ADD COLUMN session_title TEXT")
+
     conn.commit()
     conn.close()
+
 
 
 def get_all_sessions():
