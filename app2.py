@@ -9,7 +9,7 @@ from openai import OpenAI
 load_dotenv()
 
 st.set_page_config(page_title="AI 채팅 챗봇", page_icon="💬")
-st.title("💬 OpenAI 채팅 (SQLite 대화 저장)")
+st.title("💬 OpenAI 채팅 (GPT-5.5+ 모델 지원)")
 
 # ==========================================
 # 1. SQLite 데이터베이스 관리 함수들
@@ -41,7 +41,6 @@ def load_messages_from_db():
     rows = cursor.fetchall()
     conn.close()
     
-    # role과 content 딕셔너리 리스트로 변환
     saved_messages = []
     for row in rows:
         saved_messages.append({"role": row[0], "content": row[1]})
@@ -53,7 +52,6 @@ def save_message_to_db(role, content):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # 이미지가 포함된 경우 텍스트 위주로 알기 쉽게 저장
     text_to_save = content if isinstance(content, str) else "[이미지 첨부 메시지]"
     
     cursor.execute("INSERT INTO messages (role, content) VALUES (?, ?)", (role, text_to_save))
@@ -112,23 +110,41 @@ def build_user_content(user_text, attached_file):
 # ==========================================
 
 def setup_sidebar():
-    """사이드바 설정 (API Key 확인, 파일 첨부, 대화 초기화)"""
+    """사이드바 설정 (API Key, 모델 선택, 파일 첨부, 대화 초기화)"""
     with st.sidebar:
-        st.header("⚙️ 설정 및 파일 첨부")
+        st.header("⚙️ 설정 및 모델 선택")
 
-        # .env 파일에서 가져온 기본 API Key 확인
+        # 1. OpenAI API Key 확인
         env_api_key = os.getenv("OPENAI_API_KEY", "")
 
         if env_api_key:
-            st.success("✅ .env의 API Key가 적용되었습니다.")
+            st.success("✅ .env의 API Key 적용됨")
             api_key = env_api_key
         else:
-            st.warning("⚠️ .env에 API Key가 없습니다. 아래에 입력하세요.")
+            st.warning("⚠️ .env에 API Key가 없습니다.")
             api_key = st.text_input("OpenAI API Key", type="password", placeholder="sk-...")
 
         st.divider()
 
-        # 이미지 및 텍스트 파일 첨부
+        # 2. 최신 GPT-5.5 이상 모델 선택
+        model_options = [
+            "gpt-5.6-luna",    # (기본값) 빠르고 가벼운 고효율 모델
+            "gpt-5.6-terra",   # 지능과 속도의 균형 모델
+            "gpt-5.6-sol",     # 최신 플래그십 최고 성능 모델
+            "gpt-5.5",         # GPT-5.5 표준 전문 작업 모델
+            "gpt-5.5-pro",     # GPT-5.5 정밀 추론 모델
+        ]
+
+        selected_model = st.selectbox(
+            "🤖 AI 모델 선택",
+            options=model_options,
+            index=0,  # 기본값: gpt-5.6-luna
+            help="최신 GPT-5.5 및 5.6 모델 중 원하는 모델을 선택하세요."
+        )
+
+        st.divider()
+
+        # 3. 이미지 및 텍스트 파일 첨부
         uploaded_file = st.file_uploader(
             "이미지 또는 텍스트 파일 첨부",
             type=["png", "jpg", "jpeg", "txt"]
@@ -139,12 +155,12 @@ def setup_sidebar():
 
         st.divider()
 
-        # 대화 기록 초기화 버튼
+        # 4. 대화 기록 초기화 버튼
         if st.button("🗑️ 대화 기록 초기화", use_container_width=True):
             clear_chat_history()
             st.rerun()
 
-        return api_key, uploaded_file
+        return api_key, selected_model, uploaded_file
 
 
 def display_chat_history():
@@ -176,8 +192,8 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = load_messages_from_db()
 
-    # 사이드바 설정
-    api_key, uploaded_file = setup_sidebar()
+    # 사이드바 설정 (API Key, 선택한 모델, 첨부 파일)
+    api_key, selected_model, uploaded_file = setup_sidebar()
 
     # 대화 기록 화면 출력
     display_chat_history()
@@ -201,12 +217,12 @@ def main():
             if uploaded_file and uploaded_file.type.startswith("image/"):
                 st.image(uploaded_file, caption="첨부한 이미지")
 
-        # 3. OpenAI API 호출 및 스트리밍 답변 생성 (기본 모델: gpt-5.6-luna)
+        # 3. OpenAI API 호출 및 스트리밍 답변 생성 (선택된 모델 사용)
         client = OpenAI(api_key=api_key)
 
         with st.chat_message("assistant"):
             stream_response = client.chat.completions.create(
-                model="gpt-5.6-luna",
+                model=selected_model,
                 messages=st.session_state.messages,
                 stream=True
             )
