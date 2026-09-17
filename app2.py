@@ -2,6 +2,7 @@ import streamlit as st
 import base64
 import os
 import sqlite3
+from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -9,7 +10,7 @@ from openai import OpenAI
 load_dotenv()
 
 st.set_page_config(page_title="AI 채팅 챗봇", page_icon="💬")
-st.title("💬 OpenAI 채팅 (파일 & 이미지 첨부)")
+st.title("💬 OpenAI 채팅 (대화 세션 목록 지원)")
 
 # ==========================================
 # 1. SQLite 데이터베이스 관리 함수들
@@ -18,12 +19,14 @@ st.title("💬 OpenAI 채팅 (파일 & 이미지 첨부)")
 DB_FILE = "chat_history.db"
 
 def init_database():
-    """데이터베이스 파일 및 대화 저장 테이블 생성"""
+    """데이터베이스 파일 및 세션별 대화 저장 테이블 생성"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT,
+            session_title TEXT,
             role TEXT,
             content TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -33,11 +36,30 @@ def init_database():
     conn.close()
 
 
-def load_messages_from_db():
-    """DB에서 이전 대화 기록 불러오기"""
+def get_all_sessions():
+    """DB에 저장된 대화 세션 목록 가져오기 (최신순)"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT role, content FROM messages ORDER BY id ASC")
+    cursor.execute("""
+        SELECT session_id, session_title, MAX(created_at) as last_time
+        FROM messages
+        GROUP BY session_id, session_title
+        ORDER BY last_time DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    sessions = []
+    for row in rows:
+        sessions.append({"id": row[0], "title": row[1]})
+    return sessions
+
+
+def load_messages_by_session(session_id):
+    """선택한 세션의 대화 내역 불러오기"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT role, content FROM messages WHERE session_id = ? ORDER BY id ASC", (session_id,))
     rows = cursor.fetchall()
     conn.close()
     
@@ -47,26 +69,28 @@ def load_messages_from_db():
     return saved_messages
 
 
-def save_message_to_db(role, content):
-    """신규 메시지를 DB에 영구 저장"""
+def save_message_to_db(session_id, session_title, role, content):
+    """새 메시지를 세션 정보와 함께 DB에 저장"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
     text_to_save = content if isinstance(content, str) else "[이미지 첨부 메시지]"
     
-    cursor.execute("INSERT INTO messages (role, content) VALUES (?, ?)", (role, text_to_save))
+    cursor.execute(
+        "INSERT INTO messages (session_id, session_title, role, content) VALUES (?, ?, ?, ?)",
+        (session_id, session_title, role, text_to_save)
+    )
     conn.commit()
     conn.close()
 
 
-def clear_chat_history():
-    """DB와 세션의 대화 내역 전체 삭제"""
+def delete_session_from_db(session_id):
+    """선택한 대화 세션만 DB에서 삭제"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM messages")
+    cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
     conn.commit()
     conn.close()
-    st.session_state.messages = []
 
 
 # ==========================================
@@ -93,7 +117,6 @@ def open_image_upload_dialog():
         st.image(uploaded_image, caption="선택한 이미지 미리보기", use_container_width=True)
         
         if st.button("✅ 이 이미지 첨부하기", use_container_width=True):
-            # 세션에 이미지 데이터와 MIME 타입 저장
             st.session_state.attached_image_bytes = uploaded_image.getvalue()
             st.session_state.attached_image_type = uploaded_image.type
             st.session_state.attached_image_name = uploaded_image.name
@@ -131,10 +154,17 @@ def build_user_content(user_text, attached_doc):
 # 3. 화면 UI 및 사이드바 함수
 # ==========================================
 
+def start_new_chat():
+    """새로운 대화 세션 시작"""
+    st.session_state.current_session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    st.session_state.current_session_title = "새 대화"
+    st.session_state.messages = []
+
+
 def setup_sidebar():
-    """사이드바 설정 (API Key, 모델, 대화 불러오기/초기화, 파일 첨부)"""
+    """사이드바 설정 (API Key, 모델, 새 대화 시작, 대화 목록 선택, 파일 첨부)"""
     with st.sidebar:
-        st.header("⚙️ 설정 및 첨부")
+        st.header("⚙️ 설정 및 대화 목록")
 
         # 1. OpenAI API Key 상태 확인
         env_api_key = os.getenv("OPENAI_API_KEY", "")
@@ -165,29 +195,62 @@ def setup_sidebar():
 
         st.divider()
 
-        # 3. 대화 내역 불러오기 및 초기화 버튼
-        st.subheader("💬 대화 기록 관리")
-        col_load, col_clear = st.columns(2)
-        
-        with col_load:
-            if st.button("📥 불러오기", use_container_width=True, help="DB에서 이전 대화 기록을 불러옵니다"):
-                st.session_state.messages = load_messages_from_db()
-                st.rerun()
+        # 3. 새 대화 시작 및 이전 대화 목록 (ChatGPT 스타일)
+        st.subheader("💬 대화 관리")
 
-        with col_clear:
-            if st.button("🗑️ 초기화", use_container_width=True, help="모든 대화 기록을 삭제합니다"):
-                clear_chat_history()
-                st.rerun()
+        if st.button("➕ 새 대화 시작", use_container_width=True):
+            start_new_chat()
+            st.rerun()
+
+        # DB에서 저장된 대화 세션 목록 불러오기
+        saved_sessions = get_all_sessions()
+
+        if saved_sessions:
+            st.write(f"📂 저장된 대화 ({len(saved_sessions)}개)")
+            
+            # 드롭다운에서 선택할 세션 목록
+            session_titles = [s["title"] for s in saved_sessions]
+            
+            # 현재 선택된 세션 인덱스 찾기
+            current_idx = 0
+            for idx, s in enumerate(saved_sessions):
+                if s["id"] == st.session_state.current_session_id:
+                    current_idx = idx
+                    break
+
+            selected_title = st.selectbox(
+                "대화 선택",
+                options=session_titles,
+                index=current_idx,
+                label_visibility="collapsed"
+            )
+
+            # 선택한 세션 찾기
+            target_session = saved_sessions[session_titles.index(selected_title)]
+
+            # 버튼: 선택한 대화 불러오기 & 삭제하기
+            col_load, col_del = st.columns(2)
+            with col_load:
+                if st.button("📥 불러오기", use_container_width=True):
+                    st.session_state.current_session_id = target_session["id"]
+                    st.session_state.current_session_title = target_session["title"]
+                    st.session_state.messages = load_messages_by_session(target_session["id"])
+                    st.rerun()
+
+            with col_del:
+                if st.button("🗑️ 삭제", use_container_width=True):
+                    delete_session_from_db(target_session["id"])
+                    start_new_chat()
+                    st.rerun()
 
         st.divider()
 
-        # 4. 이미지 업로드 (팝업 활성화 버튼)
+        # 4. 이미지 및 문서 첨부
         st.subheader("📎 파일 및 이미지 첨부")
-        
+
         if st.button("🖼️ 이미지 첨부 (드래그앤드롭 팝업)", use_container_width=True):
             open_image_upload_dialog()
 
-        # 현재 첨부된 이미지 상태 표시
         if "attached_image_bytes" in st.session_state and st.session_state.attached_image_bytes:
             st.image(st.session_state.attached_image_bytes, caption=f"첨부됨: {st.session_state.attached_image_name}", use_container_width=True)
             if st.button("❌ 첨부 이미지 취소", use_container_width=True):
@@ -196,7 +259,6 @@ def setup_sidebar():
                 st.session_state.attached_image_name = None
                 st.rerun()
 
-        # 5. 문서 파일 업로드 (독립 위젯)
         uploaded_doc = st.file_uploader(
             "📄 문서/텍스트 파일 첨부",
             type=["txt", "csv", "md", "json"],
@@ -231,12 +293,15 @@ def main():
     # DB 초기화
     init_database()
 
-    # 앱 실행 시 세션 상태에 대화 목록이 없으면 생성
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    # 앱 구동 시 현재 세션이 없으면 새 대화 세션 생성
+    if "current_session_id" not in st.session_state:
+        start_new_chat()
 
-    # 사이드바 설정 (API Key, 선택한 모델, 첨부 문서 파일)
+    # 사이드바 설정 (API Key, 선택한 모델, 첨부 파일)
     api_key, selected_model, uploaded_doc = setup_sidebar()
+
+    # 현재 대화 세션 제목 표시
+    st.caption(f"📌 현재 대화: {st.session_state.current_session_title}")
 
     # 대화 기록 화면 출력
     display_chat_history()
@@ -249,24 +314,34 @@ def main():
             st.error("OpenAI API Key가 설정되지 않았습니다!")
             return
 
-        # 1. 사용자 메시지 구성 및 DB/세션 저장
+        # 1. 새 대화의 첫 질문일 경우, 질문 내용을 세션 제목으로 자동 지정
+        if st.session_state.current_session_title == "새 대화":
+            new_title = user_prompt[:25] + ("..." if len(user_prompt) > 25 else "")
+            st.session_state.current_session_title = new_title
+
+        # 2. 사용자 메시지 구성 및 DB/세션 저장
         user_content = build_user_content(user_prompt, uploaded_doc)
         st.session_state.messages.append({"role": "user", "content": user_content})
-        save_message_to_db("user", user_prompt)
+        save_message_to_db(
+            st.session_state.current_session_id,
+            st.session_state.current_session_title,
+            "user",
+            user_prompt
+        )
 
-        # 2. 화면에 사용자 메시지 즉시 표시
+        # 3. 화면에 사용자 메시지 즉시 표시
         with st.chat_message("user"):
             st.write(user_prompt)
             if "attached_image_bytes" in st.session_state and st.session_state.attached_image_bytes:
                 st.image(st.session_state.attached_image_bytes, caption="첨부한 이미지")
 
-        # 3. 첨부 이미지가 사용되었으므로 다음 질문을 위해 초기화
+        # 4. 첨부 이미지 1회 사용 후 초기화
         if "attached_image_bytes" in st.session_state:
             st.session_state.attached_image_bytes = None
             st.session_state.attached_image_type = None
             st.session_state.attached_image_name = None
 
-        # 4. OpenAI API 호출 및 스트리밍 답변 생성
+        # 5. OpenAI API 호출 및 스트리밍 답변 생성
         client = OpenAI(api_key=api_key)
 
         with st.chat_message("assistant"):
@@ -277,9 +352,14 @@ def main():
             )
             full_response = st.write_stream(stream_response)
 
-        # 5. AI 답변 DB/세션 저장
+        # 6. AI 답변 DB/세션 저장
         st.session_state.messages.append({"role": "assistant", "content": full_response})
-        save_message_to_db("assistant", full_response)
+        save_message_to_db(
+            st.session_state.current_session_id,
+            st.session_state.current_session_title,
+            "assistant",
+            full_response
+        )
 
 
 if __name__ == "__main__":
