@@ -34,3 +34,31 @@ st.divider()
 # 6. 여러 줄 텍스트 입력과 높이 조절 (height)
 memo = st.text_area("메모장", height=150, placeholder="여러 줄의 긴 글을 자유롭게 적어보세요")
 st.write(f"메모 내용: {memo}")
+
+st.divider()
+st.header("숫자 입력 및 슬라이더 둘러보기")
+
+# 1. 정수 숫자 입력 (최소값, 최대값, 증감 단위)
+age = st.number_input("나이", min_value=0, max_value=120, value=25, step=1)
+st.write(f"나이: {age}세")
+
+# 2. 소수점 숫자 입력 (step=0.1, format="%.1f")
+height = st.number_input("키 (cm)", min_value=100.0, max_value=250.0, value=170.5, step=0.1, format="%.1f")
+st.write(f"키: {height}cm")
+
+# 3. 기본 슬라이더
+score = st.slider("점수 선택", min_value=0, max_value=100, value=50)
+st.write(f"선택한 점수: {score}점")
+
+# 4. 범위 선택 슬라이더 (시작값과 끝값 동시에 선택)
+price_range = st.slider("희망 가격대 (원)", min_value=0, max_value=100000, value=(20000, 60000), step=5000)
+st.write(f"선택한 가격 범위: {price_range[0]:,}원 ~ {price_range[1]:,}원")
+
+# 5. 글자 옵션 슬라이더 (st.select_slider)
+satisfaction = st.select_slider(
+    "서비스 만족도",
+    options=["매우 불만", "불만", "보통", "만족", "매우 만족"],
+    value="보통"
+)
+st.write(f"만족도 결과: {satisfaction}")
+
