@@ -127,9 +127,11 @@ def get_all_messages_as_dataframe():
 def show_history_page():
     st.title("📜 과거 채팅 내역 보관소")
 
-    # 로그인 상태 확인 안내
+    # 1. 로그인 여부 확인 (미로그인 시 과거 내역 열람 완전 차단)
     if not st.session_state.get("is_logged_in"):
-        st.info("💡 사이드바 또는 채팅방에서 API Key로 로그인하시면 더욱 편리하게 이용하실 수 있습니다.")
+        st.warning("🔒 **접근 제한**: 과거 채팅 내역은 로그인(API Key 등록) 후에만 열람하실 수 있습니다.")
+        st.info("👈 왼쪽 사이드바 메뉴에서 **'AI 채팅방'**으로 이동하여 OpenAI API Key를 입력하고 로그인해 주세요.")
+        return
 
     if not check_db_exists():
         st.info("아직 저장된 대화 기록(`chat_history.db`)이 없습니다. AI 채팅방에서 대화를 먼저 시작해 보세요!")
