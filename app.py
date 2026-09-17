@@ -62,3 +62,30 @@ satisfaction = st.select_slider(
 )
 st.write(f"만족도 결과: {satisfaction}")
 
+st.divider()
+st.header("선택 및 날짜/색상 위젯 둘러보기")
+
+# 1. 라디오 버튼 (가로 정렬: horizontal=True)
+transport = st.radio("이동 수단", options=["도보", "자전거", "대중교통", "자동차"], horizontal=True)
+st.write(f"선택한 이동 수단: {transport}")
+
+# 2. 선택 박스 (드롭다운)
+city = st.selectbox("거주 지역", options=["서울", "부산", "대구", "인천", "대전", "광주"])
+st.write(f"선택한 지역: {city}")
+
+# 3. 다중 선택 (여러 개 선택 가능)
+hobbies = st.multiselect("취미 (여러 개 선택)", options=["독서", "영화 감상", "운동", "게임", "여행"])
+st.write(f"선택한 취미: {', '.join(hobbies)}")
+
+# 4. 체크박스와 토글 스위치
+agree = st.checkbox("이용약관에 동의합니다")
+notifications = st.toggle("알림 켜기", value=True)
+st.write(f"동의 여부: {agree} / 알림 설정: {notifications}")
+
+# 5. 날짜 입력 (달력 팝업)
+travel_date = st.date_input("여행 출발일")
+st.write(f"출발일: {travel_date}")
+
+# 6. 색상 선택기
+favorite_color = st.color_picker("좋아하는 색상 고르기", value="#00f900")
+st.write(f"선택한 색상 코드: {favorite_color}")
