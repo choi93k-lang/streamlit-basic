@@ -4,6 +4,8 @@ import pandas as pd
 import os
 
 DB_FILE = "chat_history.db"
+MAX_TOTAL_SESSIONS = 10
+
 
 # ==========================================
 # 1. 데이터베이스 조회 함수들
@@ -17,7 +19,7 @@ def check_db_exists():
 
 
 def get_chat_statistics():
-    """전체 세션 수와 메시지 개수 통계 반환"""
+    """전체 세션 수와 총 메시지 개수 통계 반환"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
@@ -34,7 +36,7 @@ def get_chat_statistics():
 
 
 def get_all_sessions():
-    """저장된 모든 대화 세션 목록 조회"""
+    """저장된 모든 대화 세션 목록 조회 (최신순, 최대 10개)"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -42,7 +44,8 @@ def get_all_sessions():
         FROM messages
         GROUP BY session_id, session_title
         ORDER BY last_time DESC
-    """)
+        LIMIT ?
+    """, (MAX_TOTAL_SESSIONS,))
     rows = cursor.fetchall()
     conn.close()
     
@@ -124,14 +127,18 @@ def get_all_messages_as_dataframe():
 def show_history_page():
     st.title("📜 과거 채팅 내역 보관소")
 
+    # 로그인 상태 확인 안내
+    if not st.session_state.get("is_logged_in"):
+        st.info("💡 사이드바 또는 채팅방에서 API Key로 로그인하시면 더욱 편리하게 이용하실 수 있습니다.")
+
     if not check_db_exists():
-        st.info("아직 저장된 대화 기록(`chat_history.db`)이 없습니다. app2.py에서 먼저 대화를 나눠보세요!")
+        st.info("아직 저장된 대화 기록(`chat_history.db`)이 없습니다. AI 채팅방에서 대화를 먼저 시작해 보세요!")
         return
 
-    # 1. 상단 통계 지표
+    # 1. 상단 통계 지표 (최대 10개 세션 안내 포함)
     total_sessions, total_messages = get_chat_statistics()
     col_stat1, col_stat2 = st.columns(2)
-    col_stat1.metric("총 대화 세션", f"{total_sessions}개")
+    col_stat1.metric("보관 중인 세션", f"{total_sessions} / {MAX_TOTAL_SESSIONS}개", help="최대 10개까지 자동 보관되며, 초과 시 가장 오래된 세션부터 자동 삭제됩니다.")
     col_stat2.metric("총 메시지 수", f"{total_messages}개")
 
     st.divider()
@@ -148,7 +155,7 @@ def show_history_page():
         sessions = get_all_sessions()
         
         if not sessions:
-            st.info("저장된 대화가 없습니다.")
+            st.info("저장된 대화 세션이 없습니다.")
         else:
             # 드롭다운 옵션 레이블 생성
             session_options = {s["id"]: f"{s['title']} ({s['date']})" for s in sessions}
@@ -161,7 +168,8 @@ def show_history_page():
 
             # 선택한 대화방의 메시지 렌더링
             messages = get_messages_by_session(selected_session_id)
-            st.caption(f"총 {len(messages)}개의 메시지가 있습니다.")
+            turns = len(messages) // 2
+            st.caption(f"총 {len(messages)}개의 메시지 ({turns}회 대화 턴, 세션당 최대 100회 유지)")
 
             for msg in messages:
                 with st.chat_message(msg["role"]):
@@ -170,7 +178,7 @@ def show_history_page():
 
     # --- 탭 2: 키워드 검색 ---
     with tab_search_view:
-        search_keyword = st.text_input("검색할 단어를 입력하세요", placeholder="예: 파이썬, 날씨, 이미지")
+        search_keyword = st.text_input("검색할 단어를 입력하세요", placeholder="예: 파이썬, Streamlit, 질문")
         
         if search_keyword:
             search_results = search_messages(search_keyword)
@@ -191,4 +199,3 @@ def show_history_page():
 
 if __name__ == "__main__":
     show_history_page()
-
