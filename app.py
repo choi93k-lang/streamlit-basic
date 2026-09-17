@@ -1,25 +1,31 @@
 import streamlit as st
 
-st.title("스트림릿 시작")
+st.title("텍스트 입력 예시")
 
-name = st.text_input("이름",value="홍길동")
-# st.text ("안녕하세요!")
-st.write(f"{name}님 안녕하세요!")
+# 1. 기본 텍스트 입력 (기본값 지정)
+movie_title = st.text_input("영화 제목", value="기생충")
+st.write(f"선택한 영화 제목: {movie_title}")
 
 st.divider()
 
-# 1. 안내 문구(placeholder)가 있는 텍스트 입력
-food = st.text_input("좋아하는 음식", placeholder="예: 피자, 떡볶이")
-st.write(f"좋아하는 음식: {food}")
+# 2. 이메일 입력 (type="email")
+email = st.text_input("이메일 주소", type="email")
+st.write(f"입력한 이메일: {email}")
 
-# 2. 비밀번호 입력 (입력 내용 숨김)
+st.divider()
+
+# 3. 비밀번호 입력 (type="password")
 password = st.text_input("비밀번호", type="password")
 st.write(f"입력한 비밀번호: {password}")
 
-# 3. 최대 글자 수 제한 (max_chars)
-nickname = st.text_input("닉네임 (최대 5글자)", max_chars=5)
-st.write(f"닉네임: {nickname}")
+st.divider()
 
-# 4. 여러 줄 텍스트 입력 (text_area)
-intro = st.text_area("자기소개")
-st.write(f"자기소개 내용: {intro}")
+# 4. 검색창 입력 (type="search", placeholder)
+search_query = st.text_input("검색", type="search", placeholder="검색어를 입력하세요")
+st.write(f"검색어: {search_query}")
+
+st.divider()
+
+# 5. 여러 줄 텍스트 입력 (st.text_area)
+feedback = st.text_area("한 줄 평 및 소감", placeholder="자유롭게 작성해주세요")
+st.write(f"작성한 내용: {feedback}")
