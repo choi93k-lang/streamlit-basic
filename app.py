@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 st.title("Streamlit 기능 둘러보기")
 
@@ -124,7 +125,92 @@ def show_dialog_and_empty():
 
 
 # ==========================================
-# 3. 고정 영역 (사이드바 & 푸터)
+# 3. 데이터 및 차트 관련 함수들
+# ==========================================
+
+def show_data_widgets():
+    """표(테이블)와 주요 지표(메트릭)"""
+    st.subheader("1. 주요 지표 카드 (st.metric)")
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    metric_col1.metric("오늘 매출", "1,250,000원", "+15%")
+    metric_col2.metric("방문자 수", "3,420명", "-8%")
+    metric_col3.metric("고객 만족도", "4.8점", "+0.2")
+
+    st.divider()
+    st.subheader("2. 인터랙티브 표 (st.dataframe)")
+    sample_data = pd.DataFrame({
+        "과일": ["사과", "바나나", "딸기", "포도"],
+        "가격(원)": [2000, 1500, 8000, 5000],
+        "재고량": [50, 120, 30, 45]
+    })
+    st.dataframe(sample_data, use_container_width=True)
+
+
+def show_chart_widgets():
+    """간편 차트 (꺾은선, 막대)"""
+    st.subheader("1. 꺾은선 그래프 (st.line_chart)")
+    sales_data = pd.DataFrame({
+        "월별 매출": [120, 150, 180, 220, 260, 310]
+    })
+    st.line_chart(sales_data)
+
+    st.divider()
+    st.subheader("2. 막대 그래프 (st.bar_chart)")
+    weekly_visitors = pd.DataFrame({
+        "요일": ["월", "화", "수", "목", "금", "토", "일"],
+        "방문자 수": [50, 80, 65, 90, 130, 200, 180]
+    }).set_index("요일")
+    st.bar_chart(weekly_visitors)
+
+
+# ==========================================
+# 4. 상태 알림 및 시각 효과 관련 함수들
+# ==========================================
+
+def show_status_widgets():
+    """상태 메시지 알림 상자"""
+    st.subheader("상태 메시지 상자")
+    st.success("성공: 작업이 성공적으로 처리되었습니다!")
+    st.info("안내: 새로운 버전이 출시되었습니다.")
+    st.warning("주의: 입력한 내용이 저장되지 않았습니다.")
+    st.error("오류: 올바른 형식의 파일이 아닙니다.")
+
+    st.divider()
+    st.subheader("토스트 팝업 (st.toast)")
+    if st.button("토스트 알림 띄우기"):
+        st.toast("우하단에 잠시 뜨는 토스트 메시지입니다!", icon="🔔")
+
+
+def show_effects_widgets():
+    """화면 전체 애니메이션 효과"""
+    st.subheader("화면 애니메이션 효과")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("풍선 날리기 🎈"):
+            st.balloons()
+
+    with col2:
+        if st.button("눈 내리기 ❄️"):
+            st.snow()
+
+
+def show_text_elements_widgets():
+    """코드 블록 및 텍스트 서식"""
+    st.subheader("1. 코드 블록 (st.code)")
+    sample_code = """def hello_streamlit():
+    print("Streamlit은 정말 간단하고 편리합니다!")
+
+hello_streamlit()"""
+    st.code(sample_code, language="python")
+
+    st.divider()
+    st.subheader("2. 캡션 및 인용문 (st.caption, st.divider)")
+    st.caption("이 글씨는 작은 크기의 회색 캡션 설명문입니다.")
+
+
+# ==========================================
+# 5. 고정 영역 (사이드바 & 푸터)
 # ==========================================
 
 def show_sidebar():
@@ -140,7 +226,7 @@ def show_bottom_bar():
 
 
 # ==========================================
-# 4. 메인 화면 구성 및 계층형 탭 배치
+# 6. 메인 화면 및 계층형 탭 배치
 # ==========================================
 
 # 고정 영역 실행
@@ -150,7 +236,7 @@ show_bottom_bar()
 # 1단계: 상단 대분류 선택 (가로 버튼)
 main_category = st.radio(
     "카테고리 선택",
-    options=["입력 위젯", "레이아웃 및 컨테이너"],
+    options=["입력 위젯", "레이아웃 및 컨테이너", "데이터 & 차트", "상태 알림 & 효과"],
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -170,7 +256,7 @@ if main_category == "입력 위젯":
     with tab_selection:
         show_selection_widgets()
 
-else:
+elif main_category == "레이아웃 및 컨테이너":
     tab_columns, tab_expanders, tab_popups = st.tabs(["컬럼 & 컨테이너", "접이식 & 팝오버", "팝업 & 교체영역"])
 
     with tab_columns:
@@ -181,3 +267,24 @@ else:
 
     with tab_popups:
         show_dialog_and_empty()
+
+elif main_category == "데이터 & 차트":
+    tab_data, tab_chart = st.tabs(["표 & 지표", "간편 차트"])
+
+    with tab_data:
+        show_data_widgets()
+
+    with tab_chart:
+        show_chart_widgets()
+
+elif main_category == "상태 알림 & 효과":
+    tab_status, tab_effects, tab_text_format = st.tabs(["메시지 알림", "화면 효과", "코드 및 서식"])
+
+    with tab_status:
+        show_status_widgets()
+
+    with tab_effects:
+        show_effects_widgets()
+
+    with tab_text_format:
+        show_text_elements_widgets()
