@@ -173,8 +173,12 @@ def start_new_chat():
 
 
 def setup_sidebar():
-    """사이드바 설정 (API Key, 모델, 새 대화 시작, 대화 목록 선택, 파일 첨부)"""
+    """사이드바 설정 (페이지 이동, API Key, 모델, 새 대화 시작, 대화 목록 선택, 파일 첨부)"""
     with st.sidebar:
+        # 페이지 이동 링크
+        st.page_link("app2_history.py", label="과거 채팅 내역 보관소", icon="📜")
+        st.divider()
+
         st.header("⚙️ 설정 및 대화 목록")
 
         # 1. OpenAI API Key 상태 확인
