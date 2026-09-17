@@ -3,9 +3,6 @@ import sqlite3
 import pandas as pd
 import os
 
-st.set_page_config(page_title="채팅 기록 보관소", page_icon="📜", layout="wide")
-st.title("📜 과거 채팅 내역 보관소")
-
 DB_FILE = "chat_history.db"
 
 # ==========================================
@@ -124,11 +121,8 @@ def get_all_messages_as_dataframe():
 # 2. 화면 UI 렌더링
 # ==========================================
 
-def main():
-    # 사이드바에 채팅방 이동 링크 배치
-    with st.sidebar:
-        st.page_link("app2.py", label="채팅방으로 돌아가기", icon="💬")
-        st.divider()
+def show_history_page():
+    st.title("📜 과거 채팅 내역 보관소")
 
     if not check_db_exists():
         st.info("아직 저장된 대화 기록(`chat_history.db`)이 없습니다. app2.py에서 먼저 대화를 나눠보세요!")
@@ -196,5 +190,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    show_history_page()
 

@@ -5,12 +5,13 @@ import sqlite3
 from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
+from app2_history import show_history_page
 
 # .env 파일에서 환경변수 로드
 load_dotenv()
 
-st.set_page_config(page_title="AI 채팅 챗봇", page_icon="💬")
-st.title("💬 OpenAI 채팅 (대화 세션 목록 지원)")
+st.set_page_config(page_title="AI 채팅 서비스", page_icon="💬", layout="wide")
+
 
 # ==========================================
 # 1. SQLite 데이터베이스 관리 함수들
@@ -173,12 +174,8 @@ def start_new_chat():
 
 
 def setup_sidebar():
-    """사이드바 설정 (페이지 이동, API Key, 모델, 새 대화 시작, 대화 목록 선택, 파일 첨부)"""
+    """사이드바 설정 (API Key, 모델, 새 대화 시작, 대화 목록 선택, 파일 첨부)"""
     with st.sidebar:
-        # 페이지 이동 링크
-        st.page_link("app2_history.py", label="과거 채팅 내역 보관소", icon="📜")
-        st.divider()
-
         st.header("⚙️ 설정 및 대화 목록")
 
         # 1. OpenAI API Key 상태 확인
@@ -304,7 +301,9 @@ def display_chat_history():
 # 4. 메인 실행 로직
 # ==========================================
 
-def main():
+def show_chat_page():
+    st.title("💬 OpenAI 채팅 (대화 세션 목록 지원)")
+
     # DB 초기화
     init_database()
 
@@ -377,5 +376,13 @@ def main():
         )
 
 
-if __name__ == "__main__":
-    main()
+# ==========================================
+# 5. 다중 페이지 내비게이션 실행
+# ==========================================
+
+chat_page = st.Page(show_chat_page, title="AI 채팅방", icon="💬", default=True)
+history_page = st.Page(show_history_page, title="과거 채팅 내역 보관소", icon="📜")
+
+pg = st.navigation([chat_page, history_page])
+pg.run()
+
