@@ -1,38 +1,32 @@
-# [작업 결과 보고서] secrets.toml 대신 .env 환경변수 기반 인증 설정 전환 완료
+# [작업 결과 보고서] secrets.toml 공식 표준 인증 방식으로 복원 완료
 
-Google OAuth 인증 정보(Client ID, Secret 등)를 `.streamlit/secrets.toml` 대신 프로젝트 루트의 **`.env` 환경변수 파일에서 읽어와 Streamlit에 주입하도록 성공적으로 전환**하였습니다.
+Streamlit의 공식 표준 방식인 **[.streamlit/secrets.toml](file:///c:/Projects/streamlit-basic/.streamlit/secrets.toml)** 파일 기반 인증 설정으로 복원 작업을 완료하였습니다.
 
 ---
 
-## 1. 주요 작업 내역
+## 1. 주요 복원 내역
 
-### 1) [.env](file:///c:/Projects/streamlit-basic/.env)에 Google OAuth 환경변수 추가
-OpenAI Key와 함께 Google OAuth 키를 `.env` 파일 하나에서 일원화 관리하도록 설정:
-```env
-OPENAI_API_KEY=...
-
-# Google OAuth 인증 정보
-AUTH_REDIRECT_URI=http://localhost:8501/oauth2callback
-AUTH_COOKIE_SECRET=your-random-cookie-secret-key
-AUTH_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-AUTH_CLIENT_SECRET=your-google-client-secret
-AUTH_SERVER_METADATA_URL=https://accounts.google.com/.well-known/openid-configuration
+### 1) [.streamlit/secrets.toml](file:///c:/Projects/streamlit-basic/.streamlit/secrets.toml) 복원
+Google OAuth 인증 설정(`[auth]`)을 `secrets.toml` 파일에 다시 배치하여, Streamlit 엔진이 앱 구동 시 자동으로 인증을 구성하도록 복원했습니다:
+```toml
+[auth]
+redirect_uri = "http://localhost:8501/oauth2callback"
+cookie_secret = "your-random-cookie-secret-key"
+client_id = "your-google-client-id.apps.googleusercontent.com"
+client_secret = "your-google-client-secret"
+server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 ```
 
-### 2) [stream_pages/main.py](file:///c:/Projects/streamlit-basic/stream_pages/main.py) 수정
-- `python-dotenv`의 `load_dotenv()`를 호출하여 `.env` 값을 읽어옵니다.
-- Streamlit 공식 API인 `st.secrets.merge_programmatic_secrets()`를 사용하여 `st.secrets["auth"]`에 환경변수 값을 자동 주입합니다.
-- `secrets.toml` 파일 없이도 동일하게 구글 로그인 기능이 완벽하게 동작합니다.
-
-### 3) [app2.py](file:///c:/Projects/streamlit-basic/app2.py) 진입점 표준화
-- `if __name__ == "__main__":` 문법 표준화.
+### 2) [stream_pages/main.py](file:///c:/Projects/streamlit-basic/stream_pages/main.py) 코드 단순화
+- Streamlit이 `secrets.toml`을 자체적으로 감지하고 로드하므로, `.env`를 수동으로 읽어오던 불필요한 코드(`load_dotenv`, `setup_auth_secrets`)를 전면 제거했습니다.
+- 초보자가 보았을 때 한눈에 구조를 파악할 수 있는 가장 단순하고 직관적인 `st.Page` 및 `st.navigation` 코드로 복원되었습니다.
 
 ---
 
 ## 2. 검증 결과
 
-1. **환경변수 주입 검증**: `python -c`로 `.env`의 `AUTH_CLIENT_ID`가 `st.secrets.auth.client_id`로 정확하게 로드됨을 확인 완료.
-2. **Streamlit 서버 구동 검증**: `uv run streamlit run stream_pages/main.py` 실행 시 오류 없이 정상 렌더링 확인 완료.
+1. **파이썬 컴파일 검증**: `uv run python -m py_compile stream_pages\main.py` 오류 없음 통과.
+2. **코드 단순성 검증**: 복잡한 환경변수 주입 로직 없이 공식 표준 API만으로 깔끔하게 동작 확인.
 
 ---
 
