@@ -1,36 +1,50 @@
-# [작업 결과 보고서] Streamlit Navigation API 예제 구현 (`stream_pages/navigation_demo.py`)
+# [작업 결과 보고서] 파일 기반 다중 페이지(Multipage) 앱 및 Navigation 구성 완료
 
-Streamlit 공식 문서([Streamlit Navigation API Reference](https://docs.streamlit.io/develop/api-reference/navigation))의 4가지 핵심 컴포넌트(`st.Page`, `st.navigation`, `st.page_link`, `st.switch_page`)를 구현한 신규 페이지를 `stream_pages/`에 추가하였습니다.
+Streamlit 공식 [st.navigation](https://docs.streamlit.io/develop/api-reference/navigation/st.navigation) 및 [st.Page](https://docs.streamlit.io/develop/api-reference/navigation/st.page)를 활용하여 `stream_pages/` 폴더 내에 여러 개의 독립 페이지 파일을 생성하고, 사이드바 메뉴로 연결하였습니다.
 
 ---
 
-## 1. 주요 구현 내역
+## 1. 생성 및 수정된 파일 구조
 
-### 1) [stream_pages/navigation_demo.py](file:///c:/Projects/streamlit-basic/stream_pages/navigation_demo.py) 생성
-초보자도 직관적으로 이해할 수 있도록, 파일 여러 개로 나누지 않고 하나의 파일에서 함수 단위로 화면을 정의하여 네비게이션을 시연했습니다:
+```text
+stream_pages/
+├── main.py          # [메인 네비게이션 컨트롤러]
+├── home.py          # [홈 화면 & 바로가기 링크]
+├── login.py         # [Google 계정 로그인 및 프로필 화면]
+├── dashboard.py     # [판매 데이터 표 & 막대 차트 화면]
+└── settings.py      # [앱 환경설정 화면]
+```
 
-- **`st.Page(함수, title, icon)`**:
-  - `show_home_page`, `show_about_page`, `show_settings_page` 3개 함수를 각각의 페이지 객체로 정의
-- **`st.navigation(dict)`**:
-  - `{"메인 메뉴": [home_page, about_page], "환경 설정": [settings_page]}` 형태로 그룹화된 사이드바 메뉴 자동 생성
-  - `app_navigation.run()`으로 선택된 페이지 렌더링
-- **`st.page_link(page, label, icon)`**:
-  - 홈 화면에서 소개 및 설정 화면으로 바로 갈 수 있는 링크 버튼 위젯 배치
-- **`st.switch_page(page)`**:
-  - 홈 화면에서 `[🚀 소개 페이지로 즉시 점프하기]` 버튼을 누르면 파이썬 코드가 실행되어 즉시 소개 화면으로 전환
+### 각 파일별 주요 코드 및 역할
+
+1. **[stream_pages/main.py](file:///c:/Projects/streamlit-basic/stream_pages/main.py)**:
+   - `st.Page("home.py", title="홈", icon="🏠", default=True)`
+   - `st.Page("dashboard.py", title="판매 대시보드", icon="📊")`
+   - `st.Page("login.py", title="구글 로그인", icon="🔐")`
+   - `st.Page("settings.py", title="환경설정", icon="⚙️")`
+   - `st.navigation`으로 "서비스"와 "계정 및 설정" 그룹 메뉴를 생성하고 `app_navigation.run()` 실행
+2. **[stream_pages/home.py](file:///c:/Projects/streamlit-basic/stream_pages/home.py)**:
+   - 환영 문구 및 `st.page_link`를 사용한 대시보드, 로그인, 설정 바로가기 링크 버튼 제공
+3. **[stream_pages/login.py](file:///c:/Projects/streamlit-basic/stream_pages/login.py)**:
+   - 앞서 연동한 Google OIDC 로그인(`st.login`) 및 프로필 정보(`st.user`) 화면
+4. **[stream_pages/dashboard.py](file:///c:/Projects/streamlit-basic/stream_pages/dashboard.py)**:
+   - 판다스 데이터프레임(`st.dataframe`)과 막대 차트(`st.bar_chart`)를 활용한 판매 현황 시각화
+5. **[stream_pages/settings.py](file:///c:/Projects/streamlit-basic/stream_pages/settings.py)**:
+   - 테마 모드 선택(`st.radio`) 및 알림 토글(`st.toggle`)을 포함한 설정 저장 화면
 
 ---
 
 ## 2. 검증 결과
 
-1. **문법 컴파일 검증**: `uv run python -m py_compile stream_pages\navigation_demo.py` 정상 통과
-2. **Streamlit 서버 실행 검증**: 백그라운드 서버 구동 및 정상 렌더링 확인 완료
+1. **문법 컴파일 검증**: 모든 파일(`main.py`, `home.py`, `login.py`, `dashboard.py`, `settings.py`) 오류 없이 통과
+2. **Streamlit 서버 렌더링**: Uvicorn/Streamlit 서버 정상 구동 및 사이드바 메뉴 확인 완료
 
 ---
 
 ## 3. 실행 방법
 
-터미널에서 아래 명령어를 실행하여 웹 화면을 확인하실 수 있습니다:
+터미널에서 아래 명령을 실행하여 브라우저에서 다중 페이지 앱을 직접 확인하실 수 있습니다:
 ```bash
-uv run streamlit run stream_pages/navigation_demo.py
+uv run streamlit run stream_pages/main.py
 ```
+*(또는 `run.bat` 실행)*

@@ -51,3 +51,4 @@ app_navigation = st.navigation({
 
 # 3. 네비게이션을 실행하여 선택된 페이지를 화면에 띄웁니다.
 app_navigation.run()
+
