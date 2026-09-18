@@ -23,3 +23,4 @@ def show_settings():
         st.success(f"설정이 저장되었습니다! (테마: {theme_choice}, 이메일 알림: {'켜짐' if email_notification else '꺼짐'})")
 
 show_settings()
+

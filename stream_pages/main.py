@@ -1,16 +1,24 @@
 import streamlit as st
 
-# 1. st.Page로 독립된 각 파이썬 파일들을 페이지로 등록합니다.
+# 1. 로그인 여부를 안전하게 확인합니다 (인증 미설정 시에도 에러 없이 False 반환)
+is_logged_in = st.user.get("is_logged_in", False)
+
+# 2. 각 파이썬 파일을 페이지 객체로 정의합니다.
+login_page = st.Page("login.py", title="구글 로그인", icon="🔐")
 home_page = st.Page("home.py", title="홈", icon="🏠", default=True)
 dashboard_page = st.Page("dashboard.py", title="판매 대시보드", icon="📊")
-login_page = st.Page("login.py", title="구글 로그인", icon="🔐")
 settings_page = st.Page("settings.py", title="환경설정", icon="⚙️")
 
-# 2. st.navigation으로 카테고리별 사이드바 메뉴를 구성합니다.
-app_navigation = st.navigation({
-    "서비스": [home_page, dashboard_page],
-    "계정 및 설정": [login_page, settings_page]
-})
+# 3. 로그인 여부에 따라 네비게이션 메뉴를 동적으로 구성합니다.
+if not is_logged_in:
+    # 로그인하지 않았을 때는 오직 로그인 페이지만 노출하여 다른 페이지 접근을 차단합니다.
+    app_navigation = st.navigation([login_page])
+else:
+    # 로그인한 사용자에게만 모든 서비스 페이지를 노출합니다.
+    app_navigation = st.navigation({
+        "서비스": [home_page, dashboard_page],
+        "계정 및 설정": [settings_page, login_page]
+    })
 
-# 3. 네비게이션을 실행합니다.
+# 4. 네비게이션을 실행합니다.
 app_navigation.run()

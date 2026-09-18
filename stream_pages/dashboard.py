@@ -26,3 +26,4 @@ def show_dashboard():
         st.bar_chart(df.set_index("과일"))
 
 show_dashboard()
+
