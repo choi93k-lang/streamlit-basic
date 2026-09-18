@@ -2,7 +2,7 @@ import streamlit as st
 import sqlite3
 from datetime import datetime
 from openai import OpenAI
-from app2_history import show_history_page
+from app2_1_history import show_history_page
 
 # 페이지 기본 설정
 st.set_page_config(page_title="AI 채팅 서비스", page_icon="💬", layout="wide")
