@@ -1,67 +1,36 @@
-# [작업 결과 보고서] Streamlit 공식 User 인증 기능 오류 해결 및 개선
+# [작업 결과 보고서] Streamlit Navigation API 예제 구현 (`stream_pages/navigation_demo.py`)
 
-`AttributeError: st.user has no attribute "is_logged_in"` 오류를 해결하고, 사용자가 화면에서 [로그인] 버튼을 누른 후 로그인이 실행되도록 수정하였습니다.
-
----
-
-## 1. 문제 원인 및 해결
-
-### 원인
-Streamlit은 `.streamlit/secrets.toml`에 `[auth]` 설정이 없을 때 `st.user`를 빈 상태로 유지하여, `st.user.is_logged_in`에 직접 접근하면 속성 오류(AttributeError)가 발생했습니다.
-
-### 해결
-- `is_logged_in = st.user.get("is_logged_in", False)` 방식을 적용하여, 인증 설정이 없거나 초기 로드 시에도 오류 없이 `False`(미로그인) 상태로 안전하게 로그인 화면이 열리도록 처리했습니다.
-- 이제 앱이 켜지면 오류 없이 "로그인이 필요합니다" 화면과 [로그인] 버튼이 먼저 나타나며, **사용자가 [로그인] 버튼을 클릭했을 때만 비로소 `st.login()`이 실행**됩니다.
+Streamlit 공식 문서([Streamlit Navigation API Reference](https://docs.streamlit.io/develop/api-reference/navigation))의 4가지 핵심 컴포넌트(`st.Page`, `st.navigation`, `st.page_link`, `st.switch_page`)를 구현한 신규 페이지를 `stream_pages/`에 추가하였습니다.
 
 ---
 
-## 2. 수정된 코드 (`stream_pages/main.py`)
+## 1. 주요 구현 내역
 
-```python
-import streamlit as st
+### 1) [stream_pages/navigation_demo.py](file:///c:/Projects/streamlit-basic/stream_pages/navigation_demo.py) 생성
+초보자도 직관적으로 이해할 수 있도록, 파일 여러 개로 나누지 않고 하나의 파일에서 함수 단위로 화면을 정의하여 네비게이션을 시연했습니다:
 
-def show_login_page():
-    """로그인 전 안내 메시지와 로그인 버튼을 표시합니다."""
-    st.header("로그인이 필요합니다")
-    st.write("서비스를 이용하려면 아래 로그인 버튼을 눌러주세요.")
-    
-    login_button = st.button("로그인", type="primary")
-    if login_button:
-        st.login()
+- **`st.Page(함수, title, icon)`**:
+  - `show_home_page`, `show_about_page`, `show_settings_page` 3개 함수를 각각의 페이지 객체로 정의
+- **`st.navigation(dict)`**:
+  - `{"메인 메뉴": [home_page, about_page], "환경 설정": [settings_page]}` 형태로 그룹화된 사이드바 메뉴 자동 생성
+  - `app_navigation.run()`으로 선택된 페이지 렌더링
+- **`st.page_link(page, label, icon)`**:
+  - 홈 화면에서 소개 및 설정 화면으로 바로 갈 수 있는 링크 버튼 위젯 배치
+- **`st.switch_page(page)`**:
+  - 홈 화면에서 `[🚀 소개 페이지로 즉시 점프하기]` 버튼을 누르면 파이썬 코드가 실행되어 즉시 소개 화면으로 전환
 
-def show_user_profile():
-    """로그인 성공 후 사용자 정보와 로그아웃 버튼을 표시합니다."""
-    st.header("사용자 프로필")
-    
-    user_name = st.user.get("name", "사용자")
-    user_email = st.user.get("email", "이메일 없음")
-    
-    st.success(f"환영합니다, {user_name}님!")
-    st.write("### 사용자 정보")
-    st.write(f"- 이름: {user_name}")
-    st.write(f"- 이메일: {user_email}")
-    
-    logout_button = st.button("로그아웃")
-    if logout_button:
-        st.logout()
+---
 
-def main():
-    """앱의 메인 진입점으로, 로그인 상태에 따라 화면을 분기합니다."""
-    st.title("Streamlit 사용자 인증 (st.login / st.user)")
-    
-    # st.user가 비어있어도 에러 없이 안전하게 로그인 여부를 확인합니다.
-    is_logged_in = st.user.get("is_logged_in", False)
-    
-    if is_logged_in:
-        show_user_profile()
-    else:
-        show_login_page()
+## 2. 검증 결과
 
-if __name__ == "__main__":
-    main()
+1. **문법 컴파일 검증**: `uv run python -m py_compile stream_pages\navigation_demo.py` 정상 통과
+2. **Streamlit 서버 실행 검증**: 백그라운드 서버 구동 및 정상 렌더링 확인 완료
+
+---
+
+## 3. 실행 방법
+
+터미널에서 아래 명령어를 실행하여 웹 화면을 확인하실 수 있습니다:
+```bash
+uv run streamlit run stream_pages/navigation_demo.py
 ```
-
----
-
-## 3. 검증 결과
-- `uv run python -m py_compile stream_pages/main.py`: 컴파일 오류 없음 확인.

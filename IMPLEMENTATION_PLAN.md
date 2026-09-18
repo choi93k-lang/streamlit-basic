@@ -1,55 +1,45 @@
-# [구현 계획서] Streamlit 공식 User 인증 기능 (st.login / st.logout / st.user) 구현
+# [구현 계획서] Streamlit Navigation 및 페이지 전환 API 구현
 
-Streamlit 공식 문서([Streamlit User API](https://docs.streamlit.io/develop/api-reference/user))를 기반으로, `app3.py`에 공식 사용자 인증 기능을 초보자가 이해하기 쉽고 직관적으로 작성하기 위한 계획입니다.
-
----
-
-## 1. 개요 및 배경
-
-Streamlit은 `st.login()`, `st.logout()`, `st.user`를 통해 표준 OIDC(OpenID Connect, 예: Google, Microsoft 등) 기반의 로그인 기능을 제공합니다.
-
-- **`st.user.is_logged_in`**: 현재 사용자가 로그인되어 있는지 확인 (`True` / `False`)
-- **`st.login()`**: 설정된 OIDC 공급자 로그인 화면으로 리다이렉트
-- **`st.logout()`**: 로그아웃 후 사용자 세션/쿠키 초기화
-- **`st.user`**: 로그인된 사용자의 정보(`name`, `email` 등)를 담은 객체
-
-> [!IMPORTANT]
-> **실제 작동 시 필요한 사전 요구사항**:
-> 1. `authlib>=1.3.2` 라이브러리 설치 필요 (`uv add "streamlit[auth]"` 또는 `uv add authlib`)
-> 2. `.streamlit/secrets.toml`에 OIDC Provider(Google, MS 등) 설정 필요 (`redirect_uri`, `cookie_secret`, `client_id`, `client_secret`, `server_metadata_url`)
-> 3. 만약 이 설정이 없는 상태에서 `st.login()` 버튼을 누르면 설정 누락 오류가 발생합니다.
+Streamlit 공식 문서([Streamlit Navigation API Reference](https://docs.streamlit.io/develop/api-reference/navigation))의 4가지 핵심 컴포넌트를 학습하고 체험할 수 있는 예제 페이지를 `stream_pages/` 디렉터리에 추가하기 위한 계획입니다.
 
 ---
 
-## 2. 사용자 검토 및 확인 필요 사항
+## 1. 개요 및 학습 목표
 
-`app3.py` 구현 방향에 대해 어떤 방식을 선호하시는지 확인이 필요합니다:
+Streamlit 최신 버전(1.36+ ~ 1.64+)의 공식 다중 페이지 네비게이션 핵심 API 4가지를 구현합니다:
 
-- **방안 1 (공식 문서 순수 표준 코드 - 권장)**:
-  - Streamlit 공식 문서의 가장 기본적이고 직관적인 코드로 `app3.py`를 구성합니다.
-  - 실제 구글 로그인 등을 연동할 수 있도록 `.streamlit/secrets.toml` 설정 예시 파일 안내를 함께 제공합니다.
-- **방안 2 (공식 코드 + 모의 실습 안내 포함)**:
-  - 공식 코드를 기본으로 하되, 실제 OIDC 설정 없이도 로컬에서 로그인 전/후 화면이 어떻게 바뀌는지 살펴볼 수 있는 가이드나 모의 토글 기능을 함께 구성합니다.
-
----
-
-## 3. 세부 작업 단계 (구현 계획)
-
-### 1단계: 필수 패키지 점검 및 설치
-- `uv add "streamlit[auth]"` 명령어로 `authlib` 패키지 설치 진행
-
-### 2단계: `app3.py` 코드 작성
-- 기존의 불완전한 코드(`st.App`)를 정리하고 공식 문서 표준 구조로 작성:
-  1. `show_login_section()`: 미로그인 상태일 때 로그인 안내 메시지 및 `st.login()` 버튼 제공
-  2. `show_user_profile()`: 로그인 상태일 때 `st.user.name`, `st.user.email` 등 정보 표시 및 `st.logout()` 버튼 제공
-  3. `main()`: `st.user.is_logged_in` 조건에 따라 위 두 함수 중 하나를 호출하는 단순한 진입점 구성
-
-### 3단계: OIDC 설정 템플릿 안내 (`.streamlit/secrets.toml.example`)
-- 구글(Google) OIDC 로그인을 바로 테스트해볼 수 있도록 설정 가이드 문서 제공
+1. **`st.Page`**: 각 페이지의 화면과 제목, 아이콘을 정의하는 객체 (파일 경로 또는 함수 지정 가능)
+2. **`st.navigation`**: 정의된 페이지들을 사이드바 메뉴나 상단 탭으로 묶어 앱을 실행하는 컨트롤러
+3. **`st.page_link`**: 사용자가 클릭하여 다른 페이지로 이동할 수 있는 시각적 링크 버튼
+4. **`st.switch_page`**: 버튼 클릭이나 로직 처리 후 코드로 특정 페이지로 자동 이동시키는 함수
 
 ---
 
-## 4. 검증 계획
+## 2. 제안 파일 구조 및 내용
 
-1. **문법 및 패키지 검증**: `uv run python -m py_compile app3.py` 실행
-2. **동작 테스트**: `uv run streamlit run app3.py` 실행하여 로그인 전 화면 정상 렌더링 확인
+### 1) 추가할 파일: `stream_pages/navigation_demo.py`
+초보자가 여러 파일을 왔다 갔다 하지 않고도 핵심 개념을 한눈에 볼 수 있도록, **`st.Page(함수)`** 방식을 활용하여 가장 직관적으로 작성합니다.
+
+- **`show_home_page()`**:
+  - 홈 화면 소개
+  - `st.page_link`: 소개 페이지로 이동하는 링크 버튼 예제
+  - `st.switch_page`: 버튼을 누르면 코드로 바로 소개 페이지로 점프하는 예제
+- **`show_about_page()`**:
+  - 소개 화면 및 `st.page_link`를 통한 홈 복귀 링크 예제
+- **`show_settings_page()`**:
+  - 설정 화면
+- **`main()`**:
+  - `st.Page`로 위 3개 함수를 페이지로 등록
+  - `st.navigation`으로 묶어 사이드바에 자동 메뉴를 생성하고 `pg.run()` 실행
+
+---
+
+## 3. 세부 작업 단계
+
+1. **계획 검토 및 사용자 승인**
+2. **`stream_pages/navigation_demo.py` 작성**:
+   - `st.Page`, `st.navigation`, `st.page_link`, `st.switch_page` 구현
+3. **문법 검증 및 동작 확인**:
+   - `uv run python -m py_compile stream_pages/navigation_demo.py`
+   - `uv run streamlit run stream_pages/navigation_demo.py`
+4. **Git 커밋**: 작업 완료 후 로컬 커밋 및 결과 보고서(`WALKTHROUGH.md`) 작성
