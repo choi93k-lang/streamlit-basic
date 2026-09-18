@@ -1,8 +1,20 @@
 import streamlit as st
 
+def show_login_page():
+    """로그인 안내 및 로그인 버튼을 표시합니다."""
+    st.header("🔐 로그인이 필요합니다")
+    st.write("홈, 소개, 설정 등 서비스를 이용하시려면 먼저 로그인을 진행해주세요.")
+    
+    login_button = st.button("Google 계정으로 로그인", type="primary")
+    if login_button:
+        st.login()
+
 def show_home_page():
     """홈 화면을 구성하고 페이지 링크와 페이지 전환 기능을 보여줍니다."""
     st.header("🏠 홈 페이지")
+    user_name = st.user.get("name", "사용자")
+    st.success(f"반갑습니다, {user_name}님!")
+    
     st.write("Streamlit의 공식 Navigation API들을 체험해보는 메인 화면입니다.")
     st.divider()
     
@@ -36,19 +48,36 @@ def show_settings_page():
     st.info(f"현재 선택된 테마: {theme_choice}")
     st.divider()
     
+    # 계정 정보 및 로그아웃 버튼
+    st.subheader("👤 계정 관리")
+    st.write(f"- 이름: {st.user.get('name', '사용자')}")
+    st.write(f"- 이메일: {st.user.get('email', '이메일 없음')}")
+    logout_button = st.button("로그아웃")
+    if logout_button:
+        st.logout()
+        
+    st.divider()
     st.page_link(home_page, label="홈으로 돌아가기", icon="🏠")
 
-# 1. st.Page를 사용하여 각 화면 함수를 페이지 객체로 정의합니다.
+# 1. 로그인 여부를 안전하게 확인합니다.
+is_logged_in = st.user.get("is_logged_in", False)
+
+# 2. st.Page를 사용하여 각 화면 함수를 페이지 객체로 정의합니다.
+login_page = st.Page(show_login_page, title="로그인", icon="🔐")
 home_page = st.Page(show_home_page, title="홈", icon="🏠", default=True)
 about_page = st.Page(show_about_page, title="소개", icon="ℹ️")
 settings_page = st.Page(show_settings_page, title="설정", icon="⚙️")
 
-# 2. st.navigation으로 페이지들을 카테고리별로 묶어 메뉴를 구성합니다.
-app_navigation = st.navigation({
-    "메인 메뉴": [home_page, about_page],
-    "환경 설정": [settings_page]
-})
+# 3. 로그인 여부에 따라 네비게이션 메뉴를 동적으로 분기합니다.
+if not is_logged_in:
+    # 로그인하지 않았을 때는 로그인 페이지만 노출하여 홈, 소개, 설정 접근을 차단합니다.
+    app_navigation = st.navigation([login_page])
+else:
+    # 로그인 성공 시 모든 서비스 메뉴에 접근할 수 있도록 허용합니다.
+    app_navigation = st.navigation({
+        "메인 메뉴": [home_page, about_page],
+        "환경 설정": [settings_page]
+    })
 
-# 3. 네비게이션을 실행하여 선택된 페이지를 화면에 띄웁니다.
+# 4. 네비게이션 실행
 app_navigation.run()
-
