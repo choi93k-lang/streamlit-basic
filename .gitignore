@@ -14,4 +14,5 @@ __pycache__/
 
 # Streamlit 설정
 .streamlit/secrets.toml
+.streamlit/*.json
 
