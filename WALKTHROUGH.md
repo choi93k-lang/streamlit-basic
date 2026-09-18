@@ -1,52 +1,41 @@
-# [작업 결과 보고서] Streamlit AI 채팅 앱 리뉴얼 완료 (1단계 ~ 4단계)
+# [작업 결과 보고서] Streamlit 공식 User 인증 기능 구현 (`app3.py`)
 
-사용자 피드백을 반영하여 총 4단계에 걸쳐 단계별로 확인하며 성공적으로 구현을 마쳤습니다.
-
----
-
-## 1. 단계별 완료 내역
-
-### 1단계: 순수 텍스트 대화로 코드 단순화
-- 불필요한 이미지 업로드 팝업(`@st.dialog`), `base64` 인코딩, 문서 파일 업로더 코드를 완전히 제거했습니다.
-- 대화 내역 출력(`display_chat_history`)을 순수 텍스트로 가볍고 깔끔하게 단일화했습니다.
-
-### 2단계: API Key 세션 로그인 및 보안 안내 메시지 구현
-- **로그인 화면(`show_login_page`)**:
-  - API Key가 등록되지 않은 상태에서는 대화창을 차단하고 중앙에 로그인 카드를 표시합니다.
-  - 공개 웹앱 보안 주의사항(개인정보/금융정보 입력 금지)을 명확하게 안내합니다.
-- **보안 원칙 준수**:
-  - 입력된 Key는 DB나 파일에 절대 저장되지 않으며, 오직 브라우저 세션 메모리(`st.session_state`)에만 임시 보관됩니다.
-- **사이드바 제어**:
-  - 등록된 Key의 뒷자리(`sk-...1234`)만 마스킹하여 표시하고, **[🚪 로그아웃 (Key 파기)]** 버튼으로 언제든 메모리를 비울 수 있습니다.
-
-### 3단계: 대화 및 세션 수 자동 정리(FIFO) 함수 구현
-- **세션당 100회 대화 제한 (`trim_session_messages`)**:
-  - 1회 = 질문 1개 + 답변 1개 (총 200개 메시지).
-  - 100회를 초과하면 가장 오래된 첫 번째 대화부터 차례대로 삭제하며 대화를 이어갑니다.
-- **전체 세션 10개 유지 (`trim_old_sessions`)**:
-  - 새 세션이 등록되어 10개를 넘어가면 가장 오래전에 나눴던 세션을 통째로 자동 삭제합니다.
-- **실시간 턴 수 표시**:
-  - 채팅창 상단에 `🔄 대화 턴: X/100회`를 실시간으로 안내합니다.
-
-### 4단계: 디자인 리뉴얼 및 `app2_history.py` 정돈 (보안 강화)
-- **비로그인 사용자 과거 내역 열람 완전 차단**:
-  - 로그인을 하지 않은 상태에서 보관소 페이지로 이동 시 통계나 대화 내역이 일절 노출되지 않고, "🔒 접근 제한: 로그인 후 열람 가능" 경고 안내와 함께 즉시 중단되도록 보안을 보완했습니다.
-- **`app2_history.py` 지표 카드 개선**:
-  - 상단 지표 카드에 `보관 중인 세션: X / 10개`로 현재 상태를 직관적으로 표시합니다.
-  - 대화방별 상세 보기에서 `총 X개의 메시지 (Y회 대화 턴, 세션당 최대 100회 유지)`로 통계를 제공합니다.
-- 텍스트 전용 검색 탭으로 UI를 깔끔하게 다듬었습니다.
+Streamlit 공식 문서([Streamlit User API](https://docs.streamlit.io/develop/api-reference/user))에 따라, `app3.py`에 공식 인증 컴포넌트(`st.login`, `st.logout`, `st.user`)를 적용하였습니다.
 
 ---
 
-## 2. 변경된 파일 목록
-- [app2.py](file:///c:/Projects/streamlit-basic/app2.py) : 메인 채팅, 세션 로그인, FIFO DB 관리
-- [app2_history.py](file:///c:/Projects/streamlit-basic/app2_history.py) : 과거 내역 보관소 디자인 및 통계 리뉴얼
-- [IMPLEMENTATION_PLAN.md](file:///c:/Projects/streamlit-basic/IMPLEMENTATION_PLAN.md) : 프로젝트 구현 계획서
-- [WALKTHROUGH.md](file:///c:/Projects/streamlit-basic/WALKTHROUGH.md) : 전체 작업 결과 보고서
-- [GEMINI.md](file:///c:/Projects/streamlit-basic/GEMINI.md) : 프로젝트 규칙 업데이트 (문서 루트 저장 및 단계별 확인)
+## 1. 주요 변경 내역
+
+### 1) 의존 패키지 설치
+- Streamlit 공식 인증 모듈에 필요한 `authlib` 패키지를 `uv add "streamlit[auth]"`를 통해 설치 완료.
+
+### 2) `app3.py` 구현
+파이썬 초보자도 코드를 직관적으로 이해할 수 있도록 역할을 명확히 분리하여 단순하게 작성하였습니다.
+- **`show_login_page()`**:
+  - 미로그인 상태일 때 안내 메시지와 로그인 버튼(`st.button("로그인")`) 표시
+  - 버튼 클릭 시 공식 API인 `st.login()` 호출
+- **`show_user_profile()`**:
+  - 로그인 성공 시 `st.user.name`, `st.user.email`을 통한 사용자 정보 출력
+  - `st.button("로그아웃")` 클릭 시 `st.logout()` 호출
+- **`main()`**:
+  - `st.user.is_logged_in` 속성을 확인하여 로그인 전/후 화면을 전환
+
+### 3) OIDC 설정 템플릿 제공 (`.streamlit/secrets.toml.example`)
+- 향후 실제 Google 또는 기타 OIDC 제공자와 연동할 때 필요한 설정 파일 템플릿 생성.
+- `.gitignore`에 `.streamlit/secrets.toml`이 이미 안전하게 등록되어 있어 비밀 정보가 노출되지 않도록 조치됨.
 
 ---
 
-## 3. 보안 및 검증 상태
-- 파이썬 컴파일 문법 검사: 통과 (`exit code 0`)
-- API Key 하드코딩 및 DB 저장 누출 여부: 철저히 배제 및 메모리 전용 확인
+## 2. 검증 결과
+
+1. **파이썬 문법 컴파일**: `uv run python -m py_compile app3.py` 통과 (오류 없음)
+2. **Streamlit 서버 렌더링**: 로컬 서버에서 앱 구동 및 로그인 화면 정상 렌더링 확인
+
+---
+
+## 3. 실행 방법
+
+터미널에서 아래 명령어를 실행하여 웹 화면을 확인하실 수 있습니다:
+```bash
+uv run streamlit run app3.py
+```

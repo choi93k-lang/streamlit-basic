@@ -1,63 +1,55 @@
-# [구현 계획서] Streamlit AI 채팅 앱 리뉴얼 및 데이터 관리 최적화
+# [구현 계획서] Streamlit 공식 User 인증 기능 (st.login / st.logout / st.user) 구현
 
-OpenAI API Key를 이용한 세션 로그인(보안 안내문 포함), 순수 텍스트 중심의 채팅 기능 경량화, 대화/세션 개수 자동 정리(FIFO), 모던 UI 리뉴얼 작업을 단계별로 진행하기 위한 계획서입니다.
+Streamlit 공식 문서([Streamlit User API](https://docs.streamlit.io/develop/api-reference/user))를 기반으로, `app3.py`에 공식 사용자 인증 기능을 초보자가 이해하기 쉽고 직관적으로 작성하기 위한 계획입니다.
 
 ---
 
-## 1. 요구사항 및 주요 결정 사항
+## 1. 개요 및 배경
 
-1. **로그인 방식 (API Key 기반 세션 로그인)**:
-   - 별도 패스워드 없이 사용자 본인의 OpenAI API Key를 입력하여 입장.
-   - **보안 원칙**: 입력된 API Key는 **절대 데이터베이스(DB)나 서버 파일에 영구 저장하지 않고**, 브라우저 세션 메모리(`st.session_state`)에만 임시 보관. 브라우저를 닫거나 로그아웃 시 즉시 소멸.
-   - **보안 안내문 배치**: 로그인 화면에 Streamlit Community Cloud 환경 특성상 주의해야 할 보안 취약점 안내(공용 배포 웹앱 주의사항)를 명확하게 게시.
-2. **채팅 기능 단순화 (Only 순수 텍스트 대화 + 내역 보기)**:
-   - 이미지 첨부(드래그앤드롭 팝업), 문서 첨부 등 복잡한 부가 코드를 전면 제거.
-   - 순수 텍스트 대화 스트리밍 및 과거 대화 내역 조회에만 집중하여 코드를 간결하고 가볍게 유지.
-   - 기본 모델: **`gpt-5.6-luna`**로 기본 적용.
-3. **데이터 보관 및 자동 정리 규칙 (DB 최적화)**:
-   - **세션당 대화 수 제한**: 1개 세션당 최대 100회(1회 = [사용자 질문 1개 + AI 답변 1개]) 보관. 100회 초과 시 가장 오래된 대화 1쌍부터 자동 삭제하여 항상 최대 100회 유지.
-   - **전체 세션 수 제한**: DB 전체에 저장되는 세션은 최대 10개만 유지. 11번째 신규 세션이 등록되면 가장 오래된 세션을 통째로 자동 삭제 (FIFO 방식).
-4. **디자인 리뉴얼**:
-   - Streamlit의 최신 레이아웃 컴포넌트를 활용해 여백, 배너, 사이드바를 깔끔하고 현대적인 대화형 UI로 정돈.
+Streamlit은 `st.login()`, `st.logout()`, `st.user`를 통해 표준 OIDC(OpenID Connect, 예: Google, Microsoft 등) 기반의 로그인 기능을 제공합니다.
+
+- **`st.user.is_logged_in`**: 현재 사용자가 로그인되어 있는지 확인 (`True` / `False`)
+- **`st.login()`**: 설정된 OIDC 공급자 로그인 화면으로 리다이렉트
+- **`st.logout()`**: 로그아웃 후 사용자 세션/쿠키 초기화
+- **`st.user`**: 로그인된 사용자의 정보(`name`, `email` 등)를 담은 객체
+
+> [!IMPORTANT]
+> **실제 작동 시 필요한 사전 요구사항**:
+> 1. `authlib>=1.3.2` 라이브러리 설치 필요 (`uv add "streamlit[auth]"` 또는 `uv add authlib`)
+> 2. `.streamlit/secrets.toml`에 OIDC Provider(Google, MS 등) 설정 필요 (`redirect_uri`, `cookie_secret`, `client_id`, `client_secret`, `server_metadata_url`)
+> 3. 만약 이 설정이 없는 상태에서 `st.login()` 버튼을 누르면 설정 누락 오류가 발생합니다.
 
 ---
 
 ## 2. 사용자 검토 및 확인 필요 사항
 
-- **API Key 보안 관리**: 사용자 입력 API Key는 `chat_history.db`에 절대 기록되지 않으며 오직 `st.session_state["api_key"]`에만 저장됩니다. 사이드바에 언제든지 Key를 파기하고 초기화할 수 있는 **[로그아웃 / Key 삭제]** 버튼을 제공합니다.
-- **초보자를 위한 단순한 코드 작성**: 복잡한 트리거나 비동기 큐 없이, SQLite 기본 쿼리와 직관적인 파이썬 함수(`trim_session_messages`, `trim_old_sessions`)로 구현하여 파이썬 초보자도 쉽게 코드를 읽고 이해할 수 있도록 합니다.
+`app3.py` 구현 방향에 대해 어떤 방식을 선호하시는지 확인이 필요합니다:
+
+- **방안 1 (공식 문서 순수 표준 코드 - 권장)**:
+  - Streamlit 공식 문서의 가장 기본적이고 직관적인 코드로 `app3.py`를 구성합니다.
+  - 실제 구글 로그인 등을 연동할 수 있도록 `.streamlit/secrets.toml` 설정 예시 파일 안내를 함께 제공합니다.
+- **방안 2 (공식 코드 + 모의 실습 안내 포함)**:
+  - 공식 코드를 기본으로 하되, 실제 OIDC 설정 없이도 로컬에서 로그인 전/후 화면이 어떻게 바뀌는지 살펴볼 수 있는 가이드나 모의 토글 기능을 함께 구성합니다.
 
 ---
 
-## 3. 세부 구현 단계
+## 3. 세부 작업 단계 (구현 계획)
 
-### [Component 1] 데이터베이스 관리 로직 개선 (`app2.py`)
-- `init_database()`: messages 테이블 구조 유지 (API Key 저장 컬럼 없음 확인).
-- `save_message_to_db()`: 텍스트 전용으로 저장 간소화.
-- **`trim_session_messages(session_id)`**: 해당 세션의 대화가 100회(200개 레코드)를 초과할 경우, 가장 오래된 메시지들을 순차 삭제하는 함수.
-- **`trim_old_sessions(max_sessions=10)`**: 전체 고유 세션 수가 10개를 초과할 경우 가장 오래된 세션들의 모든 메시지를 삭제하는 함수.
-- 기존 이미지 인코딩 및 다이얼로그(`encode_image_to_base64`, `open_image_upload_dialog`, `build_user_content`) 완전 제거.
+### 1단계: 필수 패키지 점검 및 설치
+- `uv add "streamlit[auth]"` 명령어로 `authlib` 패키지 설치 진행
 
-### [Component 2] 인증 및 로그인 페이지 구성 (`app2.py`)
-- **`show_login_page()`**:
-  - 환영 타이틀 및 서비스 소개.
-  - ⚠️ **보안 취약점 안내 메시지**: 공개 배포 데모 앱 주의사항, 민감정보 입력 금지 안내, 브라우저 세션 메모리 보관 안내.
-  - OpenAI API Key 입력창 (`type="password"`, placeholder="sk-...") 및 [입장하기] 버튼.
-  - Key 입력 시 `st.session_state["api_key"]`에 보관 후 `st.session_state["is_logged_in"] = True` 설정 및 `st.rerun()`.
+### 2단계: `app3.py` 코드 작성
+- 기존의 불완전한 코드(`st.App`)를 정리하고 공식 문서 표준 구조로 작성:
+  1. `show_login_section()`: 미로그인 상태일 때 로그인 안내 메시지 및 `st.login()` 버튼 제공
+  2. `show_user_profile()`: 로그인 상태일 때 `st.user.name`, `st.user.email` 등 정보 표시 및 `st.logout()` 버튼 제공
+  3. `main()`: `st.user.is_logged_in` 조건에 따라 위 두 함수 중 하나를 호출하는 단순한 진입점 구성
 
-### [Component 3] 메인 채팅 페이지 및 사이드바 리뉴얼 (`app2.py`)
-- `setup_sidebar()`:
-  - 현재 연결 상태 (뒷 4자리 마스킹 표시) 및 [로그아웃 / Key 초기화] 버튼.
-  - AI 모델 선택: `gpt-5.6-luna` (기본값) 및 옵션 제공.
-  - 대화 세션 관리: [➕ 새 대화 시작], [📂 최근 대화 목록 (최대 10개)], [🗑️ 선택 세션 삭제].
-- `show_chat_page()`:
-  - 로그인 여부 검사: 미로그인 시 `show_login_page()` 호출 후 중단(`return`).
-  - 헤더 디자인 및 현재 세션 정보 배너 표시.
-  - 순수 텍스트 스트리밍 답변 생성 (`gpt-5.6-luna`).
-  - 메시지 전송 후 `trim_session_messages` 및 `trim_old_sessions` 자동 호출.
+### 3단계: OIDC 설정 템플릿 안내 (`.streamlit/secrets.toml.example`)
+- 구글(Google) OIDC 로그인을 바로 테스트해볼 수 있도록 설정 가이드 문서 제공
 
-### [Component 4] 과거 대화 내역 조회 페이지 리뉴얼 (`app2_history.py`)
-- 미로그인 상태 시 내역 접근 차단 또는 안내 표시.
-- 상단 대화 통계 (보관 중인 세션 수/최대 10개, 총 메시지 수) 카드 디자인 개선.
-- 순수 텍스트 대화에 맞춘 가독성 높은 탭 뷰 (대화방별 보기, 키워드 검색, 표 데이터 보기).
+---
 
+## 4. 검증 계획
+
+1. **문법 및 패키지 검증**: `uv run python -m py_compile app3.py` 실행
+2. **동작 테스트**: `uv run streamlit run app3.py` 실행하여 로그인 전 화면 정상 렌더링 확인
